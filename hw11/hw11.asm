@@ -1,65 +1,67 @@
-;Basic Version
+; Basic Version
 section .data 
-    inputBuf db 0x83,0x6A,0x88,0xDE,0x9A,0xC3,0x54,0x9A ;input buffers
-    len equ $ - inputBuf ;to calculate the length of the input buff
-    newline db 0x0A, 0x00 ;newline char
+    inputBuf db 0x83,0x6A,0x88,0xDE,0x9A,0xC3,0x54,0x9A ;hex input data
+    len equ $ - inputBuf ;length calculation
+    newline db 0x0A, 0x00 ;end of line marker
 section .bss
-    outputBuf resb 80 ;reserve 80 bits for the output buff
+    outputBuf resb 80 ;output storage allocation
 section .text
-    global _start ;our code start point
+    global _start
 _start:
-    mov esi, inputBuf    ; points to input data
-    mov edi, outputBuf   ; points to output buff
-    mov ecx, len         ; counter
+    mov esi, inputBuf    ;setup source pointer
+    mov edi, outputBuf   ;setup destination pointer
+    mov ecx, len         ;initialize loop counter
+
 convert_loop:
-    ; get current byte
-    mov bl, byte [esi]   ; use bl to store the byte
-    inc esi ;;move to the next in c++ it'd be i++
-
-    ; convert high nibble
-    mov al, bl           ; copy to al for conversion
-    shr al, 4            ; high 4 bits
-    call nibble_to_ascii
-    mov [edi], al        ; store result
+    ; capture byte for processing
+    mov bl, byte [esi]   ;store current byte for translation
+    inc esi
+    
+    ; process first half of byte
+    mov al, bl           
+    shr al, 4            ;isolate high 4 bits
+    call nibble_to_ascii ;translate first hex digit
+    mov [edi], al        
     inc edi
-
-    ; convert low nibble
-    mov al, bl           ; start with original byte again
-    and al, 0x0F         ; low 4 bits
-    call nibble_to_ascii
-    mov [edi], al        ; store result
+    
+    ; process second half of byte
+    mov al, bl           
+    and al, 0x0F         ;isolate low 4 bits
+    call nibble_to_ascii ;translate second hex digit
+    mov [edi], al        
     inc edi
-
-    ; for adding space
+    
+    ; separate bytes visually
     mov byte [edi], ' '
     inc edi
-
-    ; continue until done
+    
+    ; continue processing all input bytes
     loop convert_loop
-
-    ; replace last space with newline
+    
+    ; finalize output formatting
     dec edi
-    mov byte [edi], 0x0A
-    inc edi              ; now edi points beyond the newline
-
-    ; print output
+    mov byte [edi], 0x0A ;replace final space with newline
+    inc edi              
+    
+    ; display translated hex values
     mov edx, edi
-    sub edx, outputBuf   ; calculate length
-    mov ecx, outputBuf ;pointer to the buff
+    sub edx, outputBuf   ;calculate output length
+    mov ecx, outputBuf 
     mov ebx, 1           
-    mov eax, 4         ;replaces the trailing white space 
+    mov eax, 4           
+    int 0x80
+    
+    ; terminate program
+    mov eax, 1 
+    xor ebx, ebx 
     int 0x80
 
-    ; Exit
-    mov eax, 1 ;exiting
-    xor ebx, ebx ;0 means succcess
-    int 0x80
-; convert nibble to ASCII char
+; convert 4-bit value to displayable character
 nibble_to_ascii:
     cmp al, 10
-    jl digit
-    add al, 'A' - 10     ; for A-F
+    jl digit             ;branch for numeric vs alpha conversion
+    add al, 'A' - 10     ;convert values 10-15 to A-F
     ret
 digit:
-    add al, '0'          ; for 0-9
-    ret 
+    add al, '0'          ;convert values 0-9 to ascii digits
+    ret
